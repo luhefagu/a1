@@ -4,22 +4,21 @@ from pyodide.ffi.wrappers import add_event_listener
 from datetime import datetime
 import unicodedata
 
-
 def handle_enter(event):
     # Check if the pressed key is 'Enter'
     if event.key == "Enter":
-        input_text = document.querySelector("#indicacion")
+        input_text = document.querySelector("#indicacion1")
         indicacion = input_text.value
         output_div = document.querySelector("#output")
         output_div.innerText = analizar_indicacion_medica(indicacion)
         # analizar_indicacion ()
 
 # Add event listener to the input element for 'keydown' event
-input_element = document.querySelector("#indicacion")
+input_element = document.querySelector("#indicacion1")
 add_event_listener(input_element, "keydown", handle_enter)
 
 def analizar_indicacion(event):
-    input_text = document.querySelector("#indicacion")
+    input_text = document.querySelector("#indicacion1")
     indicacion = input_text.value
     output_div = document.querySelector("#output")
     output_div.innerText = analizar_indicacion_medica(indicacion)
@@ -273,7 +272,7 @@ def parse_date_and_duration(text):
         except ValueError:
             fi_date = fi_raw # Mantener la cadena original malformada
     
-    duration_match = re.search(r"por\s+(\d+)\s*(dias|dia|d|semanas|semana|sem|meses|mes|m)", text, re.IGNORECASE)
+    duration_match = re.search(r"por\s+(\d+)\s*(dias|dia|d|semanas|semana|sem|meses|mes|m)\b", text, re.IGNORECASE)
     if duration_match:
         value = int(duration_match.group(1))
         unit = duration_match.group(2).lower()
@@ -436,13 +435,14 @@ def clean_and_normalize_text(text):
 lista_nombres = []
 
 def analizar_indicacion_medica(indicacion_medica):
-    print (indicacion_medica)
+    # print (indicacion_medica)
 
     indicacion_original = indicacion_medica
     processed_indicacion = remove_accents(indicacion_medica.lower())
     temp_indicacion = processed_indicacion 
 
     resultados = {
+        "indicacion": None,
         "solucion_base": {"nombre": None, "cantidad": None, "unidad": None},
         "aditivos_info": [],
         "frecuencia_tipo": None,
@@ -462,6 +462,8 @@ def analizar_indicacion_medica(indicacion_medica):
         "observaciones": None,
         "fecha_inicio_tratamiento": None
     }
+    # 0. Guarda indicacion original
+    resultados["indicacion"] = indicacion_original
 
     # 1. Extraer fecha de inicio y duración
     fi_date, duration_days = parse_date_and_duration(temp_indicacion)
@@ -470,9 +472,9 @@ def analizar_indicacion_medica(indicacion_medica):
     if fi_date:
         temp_indicacion = re.sub(r"fi(?:\s*:\s*|\s*)" + re.escape(str(fi_date).lower()), " ", temp_indicacion, flags=re.IGNORECASE).strip()
     if duration_days:
-        duration_match = re.search(r"por\s+(\d+)\s*(dias|dia|d|semanas|semana|sem|meses|m)", temp_indicacion, re.IGNORECASE)
-        # if duration_match:
-        #     temp_indicacion = re.sub(re.escape(duration_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
+        duration_match = re.search(r"por\s+(\d+)\s*(dias|dia|d|semanas|semana|sem|meses|m)\b", temp_indicacion, re.IGNORECASE)
+        if duration_match:
+            temp_indicacion = re.sub(re.escape(duration_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
 
     # 2. Extraer Aditivo y Solución Base Combinados (ej. "Noradrenalina 4 mg/250 mL SG5%")
     # Patrón: [medicamento] [dosis] / [volumen] [solución base]
@@ -550,7 +552,7 @@ def analizar_indicacion_medica(indicacion_medica):
             temp_indicacion = re.sub(re.escape("iniciar"+chosen_vi_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
             temp_indicacion = re.sub(re.escape(chosen_vi_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
         except:
-            None
+            pass
         temp_indicacion = re.sub(r'\s+', ' ', temp_indicacion).strip() 
 
     # 3. Extraer tiempo de infusión 
@@ -576,7 +578,7 @@ def analizar_indicacion_medica(indicacion_medica):
             temp_indicacion = re.sub(re.escape("en"+chosen_vi_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
             temp_indicacion = re.sub(re.escape(chosen_vi_match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
         except:
-            None
+            pass
         temp_indicacion = re.sub(r'\s+', ' ', temp_indicacion).strip() 
 
     # 4. Extraer vía y forma de administración
@@ -614,23 +616,7 @@ def analizar_indicacion_medica(indicacion_medica):
             temp_indicacion = re.sub(re.escape(match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
             temp_indicacion = re.sub(r'\s+', ' ', temp_indicacion).strip()
             break 
-
-    # # 5. Extraer criterio de suspensión
-    # CRITERIO_SUSPENSION_PATTERNS = [
-    #     r"suspender\s*(?:si|con)?\s*(tension arterial|ta|frecuencia cardiaca|fc|saturacion|dolor|fiebre|glicemia|glucosa|disnea|tos|nauseas|vomitos|diarrea|cefalea|mareo|prurito|rash|hipotension|hipertension|bradicardia|taquicardia|hipoglicemia|hiperglicemia|neutropenia|trombocitopenia|anemia|insuficiencia renal|insuficiencia hepatica|creatinina|uresis|diuresis|oliguria|anuria|edema|shock|sepsis|convulsion|convulsiones|alteracion del estado de conciencia|inestabilidad hemodinamica|reaccion alergica|anafilaxia|sangrado|hemorragia|obstruccion|ileo|perforacion|sepsis|acidosis|alcalosis|desequilibrio hidroelectrolitico|hiponatremia|hipernatremia|hipocalemia|hipercalemia|hipocalcemia|hipercalcemia|hipomagnesemia|hipermagnesemia|hipofosfatemia|hiperfosfatemia)",
-    #     r"no\s*administrar\s*si\s*(?:ta|tension arterial|fc|frecuencia cardiaca)\s*<",
-    #     r"susp\s*si\s*(?:ta|tension arterial|fc|frecuencia cardiaca|saturacion|dolor|fiebre|glicemia|glucosa|disnea|tos|nauseas|vomitos|diarrea|cefalea|mareo|prurito|rash|hipotension|hipertension|bradicardia|taquicardia|hipoglicemia|hiperglicemia|neutropenia|trombocitopenia|anemia|insuficiencia renal|insuficiencia hepatica|creatinina|uresis|diuresis|oliguria|anuria|edema|shock|sepsis|convulsion|convulsiones|alteracion del estado de conciencia|inestabilidad hemodinamica|reaccion alergica|anafilaxia|sangrado|hemorragia|obstruccion|ileo|perforacion|sepsis|acidosis|alcalosis|desequilibrio hidroelectrolitico|hiponatremia|hipernatremia|hipocalemia|hipercalemia|hipocalcemia|hipercalcemia|hipomagnesemia|hipermagnesemia|hipofosfatemia|hiperfosfatemia)"
-    # ]
-
-    # for pattern in CRITERIO_SUSPENSION_PATTERNS:
-    #     match = re.search(pattern, temp_indicacion, re.IGNORECASE)
-    #     if match:
-    #         resultados["criterio_suspension"] = clean_and_normalize_text(match.group(0))
-    #         temp_indicacion = re.sub(re.escape(match.group(0)), " ", temp_indicacion, flags=re.IGNORECASE, count=1).strip()
-    #         temp_indicacion = re.sub(r'\s+', ' ', temp_indicacion).strip()
-    #         break
-
-    
+   
     # 5. Extraer máximos y condicion administración
     MAXIMO_PATTERNS = [
         r"(max|maximo)\s+([a-zA-ZñÑ0-9/\s]+)\s*(en\s*caso|si[\s+]|cuando)\s*([a-zA-ZñÑ0-9\-\+\/\s]+)",
@@ -778,13 +764,13 @@ def analizar_indicacion_medica(indicacion_medica):
             break # Break after first frequency match
 
     # 8. Extraer patrón de dilución inline (aditivos) - la original, si la nueva slash pattern no coincidió
-    tipos_soluciones = "(suero\s*fisiologico\s*0.9%|fisiologico\s*0.9%|spm|sg5%|sg\s*5%|sg10%|sg\s*10%|sf\s*0.9%|sf0.9%|sf|sg|albumina\s*5%|albumina\s*20%|suero\s*ringer\s*lactato|ringer\s*lactato|dextrosa|cloruro\s+de\s+sodio|agua\s+destilada|agua\s+bidestilada|agua\s+esteril|solucion\s+fisiologica|suero\s+glucosado|solucion\s+glucosada|suero\s+premezclado)"
+    tipos_soluciones = r"(suero\s*fisiologico\s*0.9%|fisiologico\s*0.9%|spm|sg5%|sg\s*5%|sg10%|sg\s*10%|sf\s*0.9%|sf0.9%|sf|sg|albumina\s*5%|albumina\s*20%|suero\s*ringer\s*lactato|ringer\s*lactato|dextrosa|cloruro\s+de\s+sodio|agua\s+destilada|agua\s+bidestilada|agua\s+esteril|solucion\s+fisiologica|suero\s+glucosado|solucion\s+glucosada|suero\s+premezclado)"
     SOLUCION_BASE_PATTERNS = [
-        r"(?:en|en\s+solucion\s+de|con|diluido\s+en)?\s*"+tipos_soluciones+"\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)",
+        r"(?:en|en\s+solucion\s+de|con|diluido\s+en)?\s*"+tipos_soluciones+r"\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)",
         r"(?:en|en\s+solucion\s+de|con|diluido\s+en)?\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)\s*"+tipos_soluciones,
         r"(?:en|en\s+solucion\s+de|con|diluido\s+en)?\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)\s*(de|\s*)\s*"+tipos_soluciones,
-        r""+tipos_soluciones+"\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)(?!\s*de)", 
-        r""+tipos_soluciones+"(?:[\s,.]|$)" 
+        tipos_soluciones+r"\s*(\d+(?:[.,]\d+)?)\s*(ml|cc|l|litros)(?!\s*de)", 
+        tipos_soluciones+r"(?:[\s,.]|$)" 
      ]
     
     match_general_base = None
@@ -833,9 +819,7 @@ def analizar_indicacion_medica(indicacion_medica):
         r"(?:[\s,.])(\d+(?:[.,]\d+)?|\d+\/\d+)\s*(gotas|gota|gramos|gramo|mg|gr|g|ug|mcg|unidades|UI|U|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set|puffs|puff|inhalaciones|inhalacion|inh)(?:\s+de)?\s+([a-zA-ZñÑ0-9./%\s]+?)(?:[\s,.])\s*(\d+(?:[/]\d+)?\s*M|Molar)",                
         r"(?:bic\s*de|bic\s+)?\b([a-zA-ZñÑ0-9.,/\s]+)\s*(?:diluir|[(][a-z0-9/.,\s*]+[)])?\s+(\d+(?:[.,]\d+)?|\d+\/\d+)\s*(gotas|gota|gramos|gramo|mg|gr|g|ug|mcg|unidades|UI|U|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set|puffs|puff|inhalaciones|inhalacion|inh)(?:[\s,.]|$)" ,
         r"(?:bic\s*de|bic\s+)?(\b[a-zA-ZñÑ./\s]+)\s+([0-9\.\,\-\s]+)\s*(gotas|gota|gramos|gramo|mg|gr|g|ug|mcg|unidades|UI|U|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set|puffs|puff|inhalaciones|inhalacion|inh)(?:[\s,.]|$)",
-
         # r"(\d+(?:[.,\s]\d+)?|\d+\/\d+|\½)\s*(mg|gr|g|ug|mcg|UI|unidades|ml|cc|L|litros|comp|tableta|capsula|amp|ampolla|vial)(?:\s+de)?\s+([a-zA-ZñÑ\s]+?)(?:[\s,.]|$)", 
-
         # r"(\d+(?:[.,\s]\d+)?|\d+\/\d+)\s*(mg|gr|g|ug|mcg|UI|unidades|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set)(?:\s+de)?\s+([a-zA-ZñÑ.\s]+?)",        
         r"(\d+(?:[.,]\d+)?|\d+\/\d+)\s*(gotas|gota|gramos|gramo|mg|gr|g|ug|mcg|unidades|UI|U|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set|puffs|puff)(?:\s+de)?\s+([a-zA-ZñÑ0-9./\s]*)",
         r"(\d+(?:[.,\-\s*]\d+)?|\d+\/\d+)\s*(gotas|gota|gramos|gramo|mg|gr|g|ug|mcg|unidades|UI|U|ml|cc|L|litros|comprimidos|comprimido|comp|tableta|capsula|amp.|amp|ampolla|ampollas|vial|set|puffs|puff)(?:\s+de)?\s+([a-zA-ZñÑ0-9./\s]*)",
@@ -969,7 +953,7 @@ def analizar_indicacion_medica(indicacion_medica):
                     indice_final = lista_ampliada_semana.index(_normalize_dia_semana(match.group(4)), indice_inicio+1) + 1
                     lista_dia_semana_normalizada = lista_ampliada_semana[indice_inicio:indice_final]
             except:
-                None
+                pass
             if lista_dia_semana_normalizada == []:
                 lista_dia_semana = clean_and_normalize_text(match.group(0)).split("-")
                 for dia_semana in lista_dia_semana:
@@ -989,56 +973,7 @@ def analizar_indicacion_medica(indicacion_medica):
     # 10. Asignar el texto restante a "observaciones"
     extracted_elements_to_remove = []
 
-    # # Añadir términos generales que podrían quedar y son parte de conceptos ya extraídos
-    # extracted_elements_to_remove.extend(["s.o.", "sos", "PRN", "segun orden medica"]) # Asegurar remoción de términos SOS
-    # if resultados["condicion_administracion"]:
-    #     # Quitar "si" del inicio si existe para la remoción más genérica
-    #     cleaned_cond = re.sub(r'^(si|cuando|en caso de)\s*', '', resultados["condicion_administracion"], flags=re.IGNORECASE).strip()
-    #     extracted_elements_to_remove.append(resultados["condicion_administracion"])
-    #     if cleaned_cond: # Añadir la condición sin la palabra clave inicial para una remoción más flexible
-    #         extracted_elements_to_remove.append(cleaned_cond) 
-
-    # if resultados["via_administracion"]:
-    #     extracted_elements_to_remove.append(resultados["via_administracion"])
-    # if resultados["forma_administracion"]:
-    #     extracted_elements_to_remove.append(resultados["forma_administracion"])
-    
-    # # No añadir la frecuencia fija a la remoción si 's.o.' es el tipo,
-    # # ya que 'max cada 8 hrs' es una observación en este caso.
-    # if resultados["frecuencia_tipo"] and resultados["frecuencia_tipo"] != "s.o." and resultados["frecuencia_valor"] and resultados["frecuencia_unidad_tiempo"]:
-    #     extracted_elements_to_remove.append(f"{resultados['frecuencia_tipo']} {resultados['frecuencia_valor']} {resultados['frecuencia_unidad_tiempo']}")
-    
-    # for aditivo in resultados["aditivos_info"]:
-    #     # Añadir la cadena completa del aditivo (ej. "metamizol 1 g")
-    #     extracted_elements_to_remove.append(f"{aditivo['nombre']} {aditivo['dosis_cantidad']} {aditivo['dosis_unidad']}")
-    #     # Añadir solo el nombre del aditivo (ej. "metamizol") para removerlo si persiste solo
-    #     extracted_elements_to_remove.append(aditivo['nombre']) 
-
-    # if resultados["solucion_base"]["nombre"]:
-    #     base_name = resultados["solucion_base"]["nombre"]
-    #     base_qty = resultados["solucion_base"]["cantidad"]
-    #     base_unit = resultados["solucion_base"]["unidad"]
-    #     if base_name and base_qty and base_unit:
-    #         extracted_elements_to_remove.append(f"{base_name} {base_qty} {base_unit}")
-    #     extracted_elements_to_remove.append(base_name)
-
-    # # Ordenar por longitud descendente para eliminar coincidencias más largas primero
-    # extracted_elements_to_remove.sort(key=len, reverse=True)
-
     current_observaciones = clean_and_normalize_text(temp_indicacion)
-    
-    # # Limpiar current_observaciones de los elementos ya extraídos
-    # for elem in extracted_elements_to_remove:
-    #     # Usar límites de palabra para una remoción más precisa de nombres/frases
-    #     # Esto previene eliminar partes de palabras (ej. "dolor" de "dolores")
-    #     pattern_to_remove_word_boundary = r'\b' + re.escape(elem.lower().replace(" ", r'\s*')) + r'\b'
-    #     current_observaciones = re.sub(pattern_to_remove_word_boundary, ' ', current_observaciones, flags=re.IGNORECASE).strip()
-        
-    #     # También remover sin límites de palabra para frases que podrían no tenerlos
-    #     # (ej. al inicio/final de la cadena o si están pegadas a puntuación)
-    #     pattern_to_remove_no_boundary = re.escape(elem.lower().replace(" ", r'\s*'))
-    #     current_observaciones = re.sub(pattern_to_remove_no_boundary, ' ', current_observaciones, flags=re.IGNORECASE).strip()
-
 
     # Limpieza final de observaciones
     current_observaciones = re.sub(r'\s+', ' ', current_observaciones).strip()
@@ -1056,7 +991,6 @@ def analizar_indicacion_medica(indicacion_medica):
         resultados["observaciones"] = None
     
     resultados = revisar_nombres(resultados)
-    
     return resultados
 
 # print(lista_nombres)
