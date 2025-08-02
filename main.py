@@ -1,7 +1,22 @@
 import regex as re
 from pyscript import document
+from pyodide.ffi.wrappers import add_event_listener
 from datetime import datetime
 import unicodedata
+
+
+def handle_enter(event):
+    # Check if the pressed key is 'Enter'
+    if event.key == "Enter":
+        input_text = document.querySelector("#indicacion")
+        indicacion = input_text.value
+        output_div = document.querySelector("#output")
+        output_div.innerText = analizar_indicacion_medica(indicacion)
+        # analizar_indicacion ()
+
+# Add event listener to the input element for 'keydown' event
+input_element = document.querySelector("#indicacion")
+add_event_listener(input_element, "keydown", handle_enter)
 
 def analizar_indicacion(event):
     input_text = document.querySelector("#indicacion")
