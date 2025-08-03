@@ -1,27 +1,52 @@
 import regex as re
-from pyscript import document
+from pyscript import document, when
 from pyodide.ffi.wrappers import add_event_listener
+from js import Element
 from datetime import datetime
 import unicodedata
+
+n_indicaciones = 0
 
 def handle_enter(event):
     # Check if the pressed key is 'Enter'
     if event.key == "Enter":
-        input_text = document.querySelector("#indicacion1")
-        indicacion = input_text.value
-        output_div = document.querySelector("#output")
-        output_div.innerText = analizar_indicacion_medica(indicacion)
-        # analizar_indicacion ()
+        for n in range(1,n_indicaciones+1):
+            try:
+                input_text = document.querySelector("#indicacion"+str(n))
+                indicacion = input_text.value
+                output_div = document.querySelector("#output"+str(n))
+                output_div.innerText = analizar_indicacion_medica(indicacion)
+            except:
+                pass
 
-# Add event listener to the input element for 'keydown' event
-input_element = document.querySelector("#indicacion1")
-add_event_listener(input_element, "keydown", handle_enter)
+def crear_nueva_linea (n):
+    # Crea una nueva línea basado en el número n entregado
+    div = document.createElement("div")
+    contenido_nueva_linea = '<div class="row align-items-center" id="linea_'+str(n)+'"><div class="col-sm-8"><div class="input-group mb-0"><span class="input-group-text" id="basic-addon1"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16">   <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0M7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0M7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/> </svg></span><input type="text" class="form-control" name="indicacion'+str(n)+'" id="indicacion'+str(n)+'" placeholder="" /></div></div><div class="col-auto"><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="inlineRadioOptions'+str(n)+'" id="inlineRadioVO'+str(n)+'" value="VO"><label class="form-check-label" for="inlineRadioVO'+str(n)+'">VO</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="inlineRadioOptions'+str(n)+'" id="inlineRadioEV'+str(n)+'" value="EV"><label class="form-check-label" for="inlineRadioEV'+str(n)+'">EV</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="inlineRadioOptions'+str(n)+'" id="inlineRadioSC'+str(n)+'" value="SC"><label class="form-check-label" for="inlineRadioSC'+str(n)+'">SC</label></div><div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="inlineRadioOptions'+str(n)+'" id="inlineRadioOtro'+str(n)+'" value="Otro"><label class="form-check-label" for="inlineRadioOtro'+str(n)+'">Otro</label> </div><div class="form-check form-check-inline"><button type="button" class="btn-close" id="Close'+str(n)+'"></button></div></div><div class="col-sm-10" id="output'+str(n)+'"> </div></div>'
+    div.innerHTML = contenido_nueva_linea
+    lista_sortable = document.querySelector("#sortable")
+    lista_sortable.appendChild(div)
+    input_element = document.querySelector("#indicacion"+str(n))
+    @when("keydown", "#indicacion"+str(n))
+    def manejar_enter(event):
+        if event.key == "Enter":
+            input_text = document.querySelector("#indicacion"+str(n))
+            indicacion = input_text.value
+            output_div = document.querySelector("#output"+str(n))
+            output_div.innerText = analizar_indicacion_medica(indicacion)
+    @when("click", "#Close"+str(n))
+    def eliminar_indicacion(event):
+        document.querySelector("#linea_"+str(n)).remove()
+
+# Crea 10 líneas nuevas
+for n in range(1,11):
+    crear_nueva_linea(n)
+    n_indicaciones = n
 
 def analizar_indicacion(event):
-    input_text = document.querySelector("#indicacion1")
-    indicacion = input_text.value
-    output_div = document.querySelector("#output")
-    output_div.innerText = analizar_indicacion_medica(indicacion)
+    global n_indicaciones
+    n_indicaciones = n_indicaciones + 1
+    crear_nueva_linea(n_indicaciones)
 
 # --- Funciones de análisis y procesamiento ---
 traducciones = {
@@ -436,7 +461,8 @@ lista_nombres = []
 
 def analizar_indicacion_medica(indicacion_medica):
     # print (indicacion_medica)
-
+    if indicacion_medica == "":
+        return ""
     indicacion_original = indicacion_medica
     processed_indicacion = remove_accents(indicacion_medica.lower())
     temp_indicacion = processed_indicacion 
